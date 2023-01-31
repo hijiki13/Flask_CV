@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/8736edb01f.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="/static/style.css">
+    <title>Document</title>
+</head>
+
+<body class='{{style_mode}}'>
+    <div class="reg_wrap">
+        <h1>Registration Form</h1>
+        <span class="text_muted">Fields with * are required</span>
+        <br>
+        {% if msg %}
+            <span class="message">{{msg}}</span>
+        {% endif %}
+        <form action="/register" method="POST" enctype="multipart/form-data">
+            <ul class="registr">
+                <li>
+                    <label for="u_mail">*Email:</label>
+                    <!-- <input type="email" name="u_mail" id="u_mail" required> -->
+                    <input type="email" name="u_mail" id="u_mail" required value="test@mail.io">
+                </li>
+                <li>
+                    <label for="u_pass">*Password:</label>
+                    <!-- <input type="password" name="u_pass" id="u_pass" minlength="4" required> -->
+                    <input type="password" name="u_pass" id="u_pass" minlength="4" required value="qwerty">
+                    <label for="show_pass" class="btn_eye">
+                        <i class="fa-solid fa-eye"></i>
+                    </label>
+                    <button type="button" id="show_pass" onclick="show_password()"></button>
+                </li>
+                <br>
+                <li>
+                    <label for="l_name">*Last Name: </label>
+                    <!-- <input type="text" name="l_name" id="l_name" required> -->
+                    <input type="text" name="l_name" id="l_name" required value="Watson">
+                </li>
+                <li>
+                    <label for="f_name">*First Name: </label>
+                    <!-- <input type="text" name="f_name" id="f_name" required> -->
+                    <input type="text" name="f_name" id="f_name" required value="Emily">
+                </li>
+                <li>
+                    <label for="fthr_name">Father's name: </label>
+                    <input type="text" name="fthr_name" id="fthr_name">
+                </li>
+                <li>
+                    <label for="b_day">*Birthdate: </label>
+                    <input type="date" name="b_day" id="b_day" min="1963-01-01" max="2008-12-31" required>
+                </li>
+                <li>
+                    <label for="u_tel">*Tel: </label>
+                    <!-- <input type="tel" name="u_tel" id="u_tel" required> -->
+                    <input type="tel" name="u_tel" id="u_tel" required value="+380987654321">
+                </li>
+                <li>
+                    <label for="linked_in">LinkedIn link:</label>
+                    <input type="url" name="linked_in" id="linked_in">
+                </li>
+                <li>
+                    <label for="u_edu">*Education: </label>
+                    <!-- <textarea name="u_edu" id="u_edu" required></textarea> -->
+                    <textarea name="u_edu" id="u_edu" required>School, university, courses</textarea>
+                </li>
+                <li>
+                    <label for="u_skills">*Skills:</label>
+                    <!-- <textarea name="u_skill" id="u_skill" required></textarea> -->
+                    <textarea name="u_skill" id="u_skill" required>Skills, skills, skills</textarea>
+                </li>
+                <li>
+                    <label for="u_exp">*Experience: </label>
+                    <!-- <textarea name="u_exp" id="u_exp" required></textarea> -->
+                    <textarea name="u_exp" id="u_exp" required>lvl 2 1300/100000</textarea>
+                </li>
+                <li>
+                    <span>Profile photo:</span>
+                    <div class="img_select">
+                        <button type="button">
+                            <label for="u_img">Select file <small>(png/jpg/jpeg/gif)</small></label>
+                        </button>
+                    </div>
+                    <input type="file" name="u_img" id="u_img">
+                </li>
+            </ul>
+            <button type="submit">Submit</button>
+            <button type="reset">Reset</button>
+        </form>
+    </div>
+</body>
+
+<script>
+    function show_password(){
+        let pass_inp = document.getElementById('u_pass');
+        if (pass_inp.type === 'password'){
+            pass_inp.type = 'text';
+        } else {
+            pass_inp.type = 'password'
+        }
+    }
+</script>
+</html>
