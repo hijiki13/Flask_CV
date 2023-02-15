@@ -1,22 +1,39 @@
 import os
 import json
-from __init__ import app, ALLOWED_EXTENSIONS
-from flask import render_template, abort, send_file, request, session, redirect, url_for
-from werkzeug.utils import secure_filename
 from random import shuffle
-from change_mode import get_time
+from datetime import datetime
+from flask import render_template, abort, send_file, request, session, redirect
+from werkzeug.utils import secure_filename
 from users import users
-from models import db, Users
+from app import ALLOWED_EXTENSIONS
+from models import *
+
+
+#TODO: WTF IS DB MIGRATION?? IT JUST SAVES TABLES AND THEIR STRUCTURES?? NOT THE DATA ITSELF?? WHY??!
+# TODO: ALSO WTF IS THIS STRUCTURE?? U NEED TO RUN VIEWS WITH IS LIKE WTF
+# Misc: app.py, not app.py, cause it fucks with migrations; this is main file (run this).
+# Before running this, migrate db first (to create table) or face exceptions.
+
+def get_time():
+    t = datetime.now().hour
+    if 6 < t < 18:
+        return 'light'
+    else:
+        return 'dark'
 
 
 def fill_db():
     # чтобы заполнить базу искуственными данными (для проверки работоспособности)
     with app.app_context():
-        db.drop_all()
-        db.create_all()
+        exist_users = db.session.query(Users).all()
+
+        if exist_users:
+            return
+
         for record in users:
             users_obj = Users(**record)
             db.session.add(users_obj)
+
         db.session.commit()
 
 
@@ -171,5 +188,6 @@ def api():
     return json.dumps(res)
 
 
-fill_db()
-app.run(debug=True)
+if __name__ == '__main__':
+    fill_db()
+    app.run()

@@ -1,11 +1,14 @@
-import os
 from flask_sqlalchemy import SQLAlchemy
-from __init__ import app
+from flask_migrate import Migrate
+from app import app
+
 
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 
 class Users(db.Model):
+    __tablename__ = 'registeredUsers'
     id = db.Column(db.Integer, primary_key=True)
     mail = db.Column(db.String)
     password = db.Column(db.String)
