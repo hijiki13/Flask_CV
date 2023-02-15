@@ -15,4 +15,4 @@ build/
 *.egg-info/
 
 dz.txt
-cv_flask_app/database.db
+cv_flask_app/users.db
