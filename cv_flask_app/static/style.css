@@ -34,6 +34,7 @@
 .info_block{
     display: flex;
     margin-top: 15px;
+    align-items: center;
 }
 .img_block img{
     background-color: rgba(255, 255, 255, 0.5);

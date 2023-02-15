@@ -8,14 +8,16 @@ from change_mode import get_time
 from users import users
 from models import db, Users
 
-# чтобы заполнить базу искуственными данными (для проверки работоспособности)
-with app.app_context():
-    db.drop_all()
-    db.create_all()
-    for record in users:
-        users_obj = Users(**record)
-        db.session.add(users_obj)
-    db.session.commit()
+
+def fill_db():
+    # чтобы заполнить базу искуственными данными (для проверки работоспособности)
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+        for record in users:
+            users_obj = Users(**record)
+            db.session.add(users_obj)
+        db.session.commit()
 
 
 def allowed_file(filename):
@@ -25,15 +27,16 @@ def allowed_file(filename):
 @app.route('/')
 def main():
     if 'loged_in' in session and session['loged_in']:
-        return render_template('index.html', **users[session['id']], style_mode=get_time())
+        user = db.session.query(Users).filter(Users.id == session['id']).first()
+        return render_template('index.html', data=user, style_mode=get_time())
     return render_template('auth/login.html', style_mode=get_time())
 
 
 @app.route('/<user>')
-def test(user: str):
-    for i in range(len(users)):
-        if user.capitalize() in users[i]['full_name'].split(' ')[0]:
-            return render_template('index.html', **users[i], style_mode=get_time())
+def user_ref(user: str):
+    found_user = db.session.query(Users).filter(Users.last_name == user.capitalize()).first()
+    if found_user:
+        return render_template('index.html', data=found_user, style_mode=get_time())
     return abort(404)
 
 
@@ -43,9 +46,9 @@ def reg():
         user = dict()
 
         email = request.form.get('u_mail')
-        for i in range(len(users)):
-            if email == users[i]['mail']:
-                return render_template(
+        user_exists = db.session.query(Users).filter(Users.mail == email).first()
+        if user_exists:
+            return render_template(
                     '/auth/register.html', style_mode=get_time(), msg='User with this email already exists.'
                 )
         user['mail'] = email
@@ -56,10 +59,10 @@ def reg():
         f_name = request.form.get('f_name')
         l_name = request.form.get('l_name')
         fthr_name = request.form.get('fthr_name')
+        user['first_name'] = f_name.capitalize()
+        user['last_name'] = l_name.capitalize()
         if fthr_name:
-            user['full_name'] = ' '.join((l_name, f_name, fthr_name))
-        else:
-            user['full_name'] = ' '.join((l_name, f_name))
+            user['fathers_name'] = fthr_name.capitalize()
 
         b_day = request.form.get('b_day')
         _temp = b_day.split('-')
@@ -82,12 +85,14 @@ def reg():
         exp = request.form.get('u_exp')
         user['experience'] = exp
 
+        db.session.add(Users(**user))
+        cur_user = db.session.query(Users).filter(Users.mail == user['mail']).first()
+        db.session.commit()
+
         img_file = request.files['u_img']
         if img_file.filename == '':
             session['loged_in'] = True
-            session['id'] = len(users)
-            session['email'] = email
-            users.append(user)
+            session['id'] = cur_user.id
             return redirect('/')
 
         if not allowed_file(img_file.filename):
@@ -97,11 +102,10 @@ def reg():
             img_filename = secure_filename(img_file.filename)
             img_file.save(os.path.join(app.config['UPLOAD_FOLDER'], img_filename))
 
-            user['u_img'] = img_filename
+            cur_user.u_img = img_filename
+            db.session.commit()
             session['loged_in'] = True
-            session['id'] = len(users)
-            session['email'] = email
-            users.append(user)
+            session['id'] = cur_user.id
             return redirect('/')
 
     return render_template('/auth/register.html', style_mode=get_time())
@@ -112,16 +116,18 @@ def login():
     if request.method == 'POST':
         email = request.form.get('u_mail')
         passw = request.form.get('u_pass')
-        for i in range(len(users)):
-            if email == users[i]['mail']:
-                if passw == users[i]['password']:
-                    session['loged_in'] = True
-                    session['id'] = i
-                    session['email'] = email
-                    return redirect('/')
-                else:
-                    return render_template('/auth/login.html', style_mode=get_time(), msg='Incorrect password!')
-    return render_template('/auth/login.html', style_mode=get_time(), msg='No such user registered!')
+        user = db.session.query(Users).filter(Users.mail == email).first()
+        if not user:
+            return render_template('/auth/login.html', style_mode=get_time(), msg='No such user registered!')
+
+        if user.password != passw:
+            return render_template('/auth/login.html', style_mode=get_time(), msg='Incorrect password!')
+
+        session['loged_in'] = True
+        session['id'] = user.id
+        return redirect('/')
+
+    return render_template('/auth/login.html', style_mode=get_time())
 
 
 @app.errorhandler(404)
@@ -131,32 +137,39 @@ def error_404(code):
 
 @app.route('/api')
 def api():
-    if 'count' in request.args.keys():
+    # create list of dict from Users objects
+    row2dict = lambda r: {c.name: str(getattr(r, c.name)) for c in r.__table__.columns}
 
-        if int(request.args['count']) > len(users):
-            return json.dumps(users)
+    all_users = db.session.query(Users).all()
+    res = []
+    for el in all_users:
+        res.append(row2dict(el))
+
+    if 'count' in request.args.keys():
+        if int(request.args['count']) > len(all_users):
+            return json.dumps(res)
+
         if int(request.args['count']) <= 0:
             return json.dumps([])
 
-        res_obj = users.copy()
-        shuffle(res_obj)
-        res_obj = res_obj[:int(request.args['count'])]
-        return json.dumps(res_obj)
+        shuffle(res)
+        res = res[:int(request.args['count'])]
+        return json.dumps(res)
 
-    if 'email' in request.args.keys():
-        for i in range(len(users)):
-            # mail is better cause its unique (and no spaces)
-            if request.args['email'] in users[i]['mail']:
-                return json.dumps(users[i])
+    if 'last_name' in request.args.keys():
+        res.clear()
+        users_by_name = db.session.query(Users).filter(
+            Users.last_name == request.args['last_name'].capitalize()
+        ).all()
+
+        for el in users_by_name:
+            res.append(row2dict(el))
+            return json.dumps(res)
+
         return json.dumps([])
 
-    if 'name' in request.args.keys():
-        for i in range(len(users)):
-            if request.args['name'].capitalize() in users[i]['full_name']:
-                return json.dumps(users[i])
-        return json.dumps([])
-
-    return json.dumps(users)
+    return json.dumps(res)
 
 
+fill_db()
 app.run(debug=True)

@@ -2,7 +2,9 @@ users = [
     {
     'mail':'some_mail@gmail.com',
     'password':'letmeinletmeinletmein',
-    'full_name':'Dyomshina Anastasiia Mikolayvna',
+    'first_name':'Anastasiia',
+    'last_name':'Dyomshina',
+    'fathers_name':'Mikolayvna',
     'birthdate':'13/04/1999',
     'tel':'+380843669436',
     'education':"Level-up - Front End course; IT-Step - Python course",
@@ -13,7 +15,8 @@ users = [
     {
     'mail':'another_mail@gmail.com',
     'password':'12345',
-    'full_name':'Smith John',
+    'first_name':'John',
+    'last_name':'Smith',
     'birthdate':'14/05/2001',
     'tel':'+380987654321',
     'education':"Some school or other",
@@ -23,7 +26,8 @@ users = [
     {
     'mail':'cool_mail@gmail.com',
     'password':'69420',
-    'full_name':'Yamada Hanako',
+    'first_name':'Hanako',
+    'last_name':'Yamada',
     'birthdate':'12/03/1998',
     'tel':'+380123456789',
     'education':"good one",
