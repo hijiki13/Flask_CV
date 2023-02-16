@@ -5,16 +5,24 @@ from datetime import datetime
 from flask import render_template, abort, send_file, request, session, redirect
 from werkzeug.utils import secure_filename
 from users import users
-from app import ALLOWED_EXTENSIONS
 from models import *
 
 
-#TODO: WTF IS DB MIGRATION?? IT JUST SAVES TABLES AND THEIR STRUCTURES?? NOT THE DATA ITSELF?? WHY??!
-# TODO: ALSO WTF IS THIS STRUCTURE?? U NEED TO RUN VIEWS WITH IS LIKE WTF
-# Misc: app.py, not app.py, cause it fucks with migrations; this is main file (run this).
-# Before running this, migrate db first (to create table) or face exceptions.
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
-def get_time():
+
+def allowed_file(filename) -> bool:
+    '''
+    Функция проверки расширения файла (для картинок).
+    Возвращает True если расширение картинки подходит, в обратном случае - False.
+    '''
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def get_time() -> str:
+    """
+    Функция для определения текущего времени пользователя (для смены темы сайта).
+    """
     t = datetime.now().hour
     if 6 < t < 18:
         return 'light'
@@ -22,11 +30,10 @@ def get_time():
         return 'dark'
 
 
-def fill_db():
-    # чтобы заполнить базу искуственными данными (для проверки работоспособности)
+def fill_db() -> None:
+    # чтобы заполнить базу искуственными данными (для проверки работоспособности).
     with app.app_context():
         exist_users = db.session.query(Users).all()
-
         if exist_users:
             return
 
@@ -37,21 +44,30 @@ def fill_db():
         db.session.commit()
 
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
 @app.route('/')
 def main():
+    # Функция для главной страницы.
+    # Возвращает страницу пользователя, если он уже зарегестрирован и вошел в систему.
+    # В другом случае возвращает страницу входа.
+
     if 'loged_in' in session and session['loged_in']:
         user = db.session.query(Users).filter(Users.id == session['id']).first()
         return render_template('index.html', data=user, style_mode=get_time())
     return render_template('auth/login.html', style_mode=get_time())
 
 
-@app.route('/<user>')
-def user_ref(user: str):
-    found_user = db.session.query(Users).filter(Users.last_name == user.capitalize()).first()
+@app.route('/users/<l_name>/', defaults={'f_name': None})
+@app.route('/users/<l_name>/<f_name>')
+def user_ref_last_name(l_name: str, f_name: str):
+    if f_name:
+        found_user = db.session.query(Users).filter(
+            Users.last_name == l_name.capitalize()
+        ).filter(
+            Users.first_name == f_name.capitalize()
+        ).first()
+    else:
+        found_user = db.session.query(Users).filter(Users.last_name == l_name.capitalize()).first()
+
     if found_user:
         return render_template('index.html', data=found_user, style_mode=get_time())
     return abort(404)
@@ -59,6 +75,8 @@ def user_ref(user: str):
 
 @app.route('/register', methods=['GET', 'POST'])
 def reg():
+    # Функция для страницы регистрации.
+
     if request.method == 'POST':
         user = dict()
 
@@ -130,16 +148,22 @@ def reg():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Функция для страницы входа.
+
     if request.method == 'POST':
         email = request.form.get('u_mail')
         passw = request.form.get('u_pass')
         user = db.session.query(Users).filter(Users.mail == email).first()
+
+        # Проверяет есть ли такой пользователь в базе данных и совпадает ли введенный пароль с паролем в базе.
         if not user:
             return render_template('/auth/login.html', style_mode=get_time(), msg='No such user registered!')
 
         if user.password != passw:
             return render_template('/auth/login.html', style_mode=get_time(), msg='Incorrect password!')
 
+        # Записывает id пользователя и его статус (вошел в систему) в сессию.
+        # После, переадресовывает на главную страницу.
         session['loged_in'] = True
         session['id'] = user.id
         return redirect('/')
@@ -154,38 +178,48 @@ def error_404(code):
 
 @app.route('/api')
 def api():
-    # create list of dict from Users objects
+    # Функция для создания/отображения API со списком пользователей. По дефолту выводит всех пользователей.
+
+    # lambda функция создает словарь из объекта класса. С ее помощью создается список словарей всех пользователей.
     row2dict = lambda r: {c.name: str(getattr(r, c.name)) for c in r.__table__.columns}
+    all_users_obj = db.session.query(Users).all()
+    all_users = []
+    res_api = []
+    for el in all_users_obj:
+        all_users.append(row2dict(el))
 
-    all_users = db.session.query(Users).all()
-    res = []
-    for el in all_users:
-        res.append(row2dict(el))
+    count = 'count' in request.args.keys()
+    last_name = 'last_name' in request.args.keys()
 
-    if 'count' in request.args.keys():
-        if int(request.args['count']) > len(all_users):
-            return json.dumps(res)
-
-        if int(request.args['count']) <= 0:
-            return json.dumps([])
-
-        shuffle(res)
-        res = res[:int(request.args['count'])]
-        return json.dumps(res)
-
-    if 'last_name' in request.args.keys():
-        res.clear()
+    # Если есть параметр last_name - выводит список из всех пользователей с такой фамилией.
+    # Если таких пользователей нет - выводит пустой список.
+    if last_name:
         users_by_name = db.session.query(Users).filter(
             Users.last_name == request.args['last_name'].capitalize()
         ).all()
 
-        for el in users_by_name:
-            res.append(row2dict(el))
-            return json.dumps(res)
-
+        if users_by_name:
+            for el in users_by_name:
+                res_api.append(row2dict(el))
+            if count:
+                return json.dumps(res_api[:int(request.args['count'])])
+            return json.dumps(res_api)
         return json.dumps([])
 
-    return json.dumps(res)
+    # Если есть параметр count - выводит список из заданного количества случайных пользователей.
+    # Если count больше, чем количество всех пользователей - выводит всех пользователей.
+    # Если count 0 или отрицательный - выводит пустой список
+    if count:
+        if int(request.args['count']) > len(all_users):
+            return json.dumps(all_users)
+        if int(request.args['count']) <= 0:
+            return json.dumps([])
+
+        shuffle(all_users)
+        all_users = all_users[:int(request.args['count'])]
+        return json.dumps(all_users)
+
+    return json.dumps(all_users)
 
 
 if __name__ == '__main__':
